@@ -2,13 +2,13 @@ export const WEB_MAX_ATTACHMENTS = 8;
 export const WEB_MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
 export const WEB_MAX_ATTACHMENT_TOTAL_BYTES = 8 * 1024 * 1024;
 
-const SUPPORTED_MIME = new Set([
-  "text/plain",
-  "text/markdown",
-  "application/json",
-  "image/png",
-  "image/jpeg",
-  "image/webp",
+const MIME_EXTENSIONS = new Map<string, readonly string[]>([
+  ["text/plain", [".txt", ".log"]],
+  ["text/markdown", [".md", ".markdown"]],
+  ["application/json", [".json"]],
+  ["image/png", [".png"]],
+  ["image/jpeg", [".jpg", ".jpeg"]],
+  ["image/webp", [".webp"]],
 ]);
 
 export interface WebAttachmentInput {
@@ -24,6 +24,18 @@ function isSafeAttachmentName(name: string) {
     return false;
   }
   return !/[\u0000-\u001f\u007f]/u.test(name);
+}
+
+function extensionOf(name: string) {
+  const separator = name.lastIndexOf(".");
+  if (separator <= 0 || separator === name.length - 1) return "";
+  return name.slice(separator).toLowerCase();
+}
+
+function matchesMimeExtension(name: string, mime: string) {
+  const extensions = MIME_EXTENSIONS.get(mime);
+  if (!extensions) return false;
+  return extensions.includes(extensionOf(name));
 }
 
 export function validateWebAttachments(
@@ -43,10 +55,16 @@ export function validateWebAttachments(
         error: `invalid attachment name: ${attachment.name}`,
       };
     }
-    if (!SUPPORTED_MIME.has(attachment.mime)) {
+    if (!MIME_EXTENSIONS.has(attachment.mime)) {
       return {
         ok: false as const,
-        error: `unsupported attachment type: ${attachment.mime}`,
+        error: "unsupported attachment type",
+      };
+    }
+    if (!matchesMimeExtension(attachment.name, attachment.mime)) {
+      return {
+        ok: false as const,
+        error: "attachment extension does not match type",
       };
     }
     if (
