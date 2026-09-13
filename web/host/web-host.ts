@@ -867,9 +867,15 @@ export class WebHost {
     if (url.pathname === "/api/sessions/search") {
       const query = url.searchParams.get("q") ?? "";
       const includeArchived = url.searchParams.get("archived") === "true";
+      const rawOffset = url.searchParams.get("offset");
+      const rawLimit = url.searchParams.get("limit");
+      const offset = rawOffset === null ? 0 : Number(rawOffset);
+      const limit = rawLimit === null ? undefined : Number(rawLimit);
       const result = await this.adapter.searchSessions({
         query,
         includeArchived,
+        offset,
+        ...(limit !== undefined ? { limit } : {}),
       });
       if (result.status === "invalid") {
         return this.json(response, 400, {
@@ -880,6 +886,9 @@ export class WebHost {
       return this.json(response, 200, {
         query,
         sessions: result.sessions,
+        ...(result.nextOffset !== undefined
+          ? { nextOffset: result.nextOffset }
+          : {}),
         truncation: result.truncation,
       });
     }

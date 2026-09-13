@@ -164,7 +164,9 @@ test("session metadata search finds matches outside the UI projection cap", asyn
       const manager = SessionManager.create(root, sessionDirectory);
       persistSession(
         manager,
-        index === 0 ? "needle-late-unique" : `session-${index}`,
+        index === 0
+          ? "needle-late-unique common-token"
+          : `common-token session-${index}`,
         index + 1,
       );
       if (index === 0) latePath = manager.getSessionFile();
@@ -190,6 +192,27 @@ test("session metadata search finds matches outside the UI projection cap", asyn
     assert.deepEqual(await adapter.searchSessions({ query: "   " }), {
       status: "invalid",
     });
+    const paged = await adapter.searchSessions({
+      query: "common-token",
+      offset: WEB_MAX_SESSIONS,
+      limit: 10,
+    });
+    assert.equal(paged.status, "ok");
+    if (paged.status !== "ok") return;
+    assert.equal(paged.sessions.length, 1);
+    assert.equal("nextOffset" in paged, false);
+    const firstPage = await adapter.searchSessions({
+      query: "common-token",
+      offset: 0,
+      limit: 100,
+    });
+    assert.equal(firstPage.status, "ok");
+    if (firstPage.status !== "ok") return;
+    assert.equal(firstPage.nextOffset, 100);
+    assert.deepEqual(
+      await adapter.searchSessions({ query: "common-token", offset: -1 }),
+      { status: "invalid" },
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

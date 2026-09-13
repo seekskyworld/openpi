@@ -2124,6 +2124,17 @@ test("session search rejects empty queries and searches canonical metadata", asy
         body.sessions[0]?.firstMessage ?? "",
         /canonical-search-hit/,
       );
+      assert.equal("nextOffset" in body, false);
+      const invalidPage = await fetch(
+        `${launched.origin}/api/sessions/search?q=canonical-search-hit&offset=-1`,
+        { headers },
+      );
+      assert.equal(invalidPage.status, 400);
+      const overLimit = await fetch(
+        `${launched.origin}/api/sessions/search?q=canonical-search-hit&limit=101`,
+        { headers },
+      );
+      assert.equal(overLimit.status, 400);
     } finally {
       await host.stop();
     }
